@@ -1,0 +1,268 @@
+#include <iostream>
+#include <cmath>
+#include "Random64.h"
+
+// Se implementa una clase para los carros
+
+using namespace std;
+ //Velunity=10km/h, tstep=0.99s
+const int Lx=50;
+
+//_______________________________________Clases____________________________________________________
+
+//____________________________________Clase Carro__________________________________________________
+
+class Carro{
+ private:
+  int vel,brake,delay;
+ public:
+  void Cargue(int velocidad, int freno, int del);
+  int GetVel(void);
+  int GetLight(void);
+  int GetDelay(void);
+  friend class Carril;
+};
+
+void Carro::Cargue(int velocidad, int freno, int del){
+  vel=velocidad; brake=freno; delay=del;
+}
+int Carro::GetVel(void){
+  return vel;
+}
+int Carro::GetLight(void){
+  return brake;
+}
+int Carro::GetDelay(void){
+  return delay;
+}
+//______________________________________________________Carril_______________________________________
+
+class Carril{
+	private:
+  int Vel[8],Gbrake[8],Gaccel[8],tup[8];
+  //Cada celda guarda la posición de un carro, n[i]=k es la parte trasera del carro k en la celda i, n[i]=-1 es que no hay carro
+  int Gap[Lx],  n[Lx], nnew[Lx]; int CantidadCarros;
+	public:
+                Carril(void);
+                //Se utiliza un generador aleatorio para generar las posiciones y velocidades iniciales
+                void Inicie(double rho, Carro * Carros, int Amount);
+	        void CalculoGap(Carro * Carros);
+		void Interactue(Carro * Carros);
+		void Muevase(Carro * Carros);
+                double FlujoEspacial(Carro * Carros);
+                
+  //friend class Carro;
+};
+
+Carril::Carril(void){
+  for(int ii=0;ii<8;ii++){ Vel[ii]=ii;}
+  Gbrake[0]=0;  Gbrake[1]=Gbrake[2]=3;  Gbrake[3]=4;  Gbrake[4]=5;  Gbrake[5]=Gbrake[6]=6;  Gbrake[7]=7;
+  Gaccel[0]=3;  Gaccel[1]=4;  Gaccel[2]=Gaccel[3]=5;  Gaccel[4]=6;  Gaccel[5]=7;  Gaccel[6]=8;  Gaccel[7]=9;
+  tup[0]=tup[1]=tup[2]=tup[3]=1;tup[4]=tup[5]=tup[6]=tup[7]=2;
+}
+
+
+void Carril::Inicie(double rho, Carro * Carros, int Amount){
+  CantidadCarros=Amount;
+  int Velocidad[Amount]={0};
+  int freno[Amount]={0};
+  int pp[Lx];
+  //Inicializar el carril sin carros
+  for(int l=0;l<Lx;l++){
+    pp[l]=-1;
+    n[l]=-1; nnew[l]=-1; Gap[l]=0;
+  }
+  
+  Crandom ran2(30);
+  int ix=0,place,ii;
+  double c;
+  int con;
+  int Tam[Amount]={0}; 
+  //Posiciones iniciales de los carro
+  while(ix<Amount){
+    c=ran2.r()*(Lx-3*ix);
+    place =(int)c;
+        
+
+  }
+  
+  /*  for(int ix=0;ix<CantidadCarros;ix++){
+  con=0;
+  c=ran2.r()*(Lx-3*ix);
+  place=(int)c+1;
+  for(int ii=0;ii<Lx;ii++){
+    if(n[ii]==-1){con++;}    
+    if(con==place){
+      n[ii]=1;n[(ii+Lx-1)%Lx]=1;n[(ii+1)%Lx]=1;
+      cout<<con<<" "<<ii<<endl;
+      Tam[ix]=ii;
+      break;
+    }
+    //ix+=1;
+  }}
+
+   for(int l=0;l<Lx;l++){
+    pp[l]=-1;
+    n[l]=-1; nnew[l]=-1; Gap[l]=0;
+   }
+
+   for(ii=0;ii<CantidadCarros;ii++){
+     n[Tam[ii]]=ii;
+   }
+   for(ii=0;ii<Lx;ii++){
+     cout<<n[ii]<<" ";
+   }
+  */
+  int deltax;
+  double velocidad,velmax;
+  bool adelante;
+  //Velocidades iniciales de los carros
+  for(ix=0;ix<Lx;ix++){
+    //La velocidad inicial será menor que delta x para evitar que los carros choquen incialmente
+    if(n[ix]!=-1){
+      adelante=false;
+      //La variable "adelante" determina si ya se encontró el carro de adelante iterando sobre la posición ix (si adelante=false no se ha encontrado      el carro de adelante)
+      for(ii=(ix+2)%Lx;adelante==false;ii=(ii+1)%Lx){
+        if(n[ii]!=-1){
+	  if((ii-ix)>0) deltax=(ii-ix)-2; //Se quitan las dos casillas que ocupa el carro referencia
+	  else deltax=Lx+(ii-ix)-2; //Para que las condiciones de frontera periodica se puedan aplicar
+	  adelante=true;//Se encontró el carro de adelante
+	}
+      }
+      velmax=min(7,deltax);
+      velocidad=ran2.r()*velmax;
+      Velocidad[n[ix]]=(int)velocidad;
+	if(deltax==0)
+	  {//Si el carro está pegado al de adelante las luces de stop se  encienden
+	    freno[n[ix]]=1;
+	  }
+	//la siguiente posición a revisar es la del carro de adelante
+	if(ii>ix) {ix=ii-1;} 
+        else {ix=Lx+1;} //El ultimo carro en revisar es aquel cuyo carro de enfrente está más atrás en la calle (condiciones de forntera periodica)
+       }   
+    }
+  for(ii=0; ii<Amount; ii++){
+    Carros[ii].Cargue(Velocidad[ii],freno[ii],0);}
+  
+}
+
+void Carril::CalculoGap(Carro * Carros){
+  int ii,ix;
+  bool adelante;
+  //Calculo del gap
+  for(ix=0;ix<Lx;ix++){
+    if(n[ix]!=-1){
+      adelante=false;
+      for(ii=(ix+2)%Lx;adelante==false;ii=(ii+1)%Lx){
+        if(n[ii]!=-1){
+	  Gap[n[ix]]+=(Carros[n[ii]].GetVel()-Carros[n[ix]].GetVel());
+	  if(ii>ix){Gap[n[ix]]+=ii-ix-2;}
+	  else {Gap[ix]+=Lx+(ii-ix)-2;}
+	  adelante=true;
+	}
+      }
+    }
+    if(ii>ix) {ix=ii-1;}
+    else {ix=Lx;}
+  }
+}
+
+void Carril::Interactue(Carro * Carros){
+  //Aplicacion de la regla de movimiento establecida para un solo carril con fronteras periodicas en el articulo Traffic Flow in Bogotá
+  int vel,gap,LightAhead,del,ii,jj,ix;
+  bool adelante;
+  for(ix=0;ix<Lx;ix++){
+    if(n[ix]!=-1){
+      //Hallar el carro inmediatamente adelante
+      adelante=false; 
+      for(ii=(ix+2)%Lx;adelante==false;ii=(ii+1)%Lx){
+	if(n[ii]!=1){LightAhead=Carros[n[ii]].GetLight(); adelante=true;} 
+      }
+      vel=Carros[n[ix]].GetVel();
+      gap=Gap[n[ix]];
+      del=Carros[n[ix]].GetDelay();
+      //Frenado instantaneo
+      if(gap<Gbrake[vel]){
+	for(jj=vel-1;jj>=0;jj--){
+	  //El ciclo se recorre de mayor velocidad a menor para obtener la mayor velocidad que cumple con la condición
+	  if((Gbrake[jj]<=gap)&&(gap<Gaccel[jj])){
+	    Carros[n[ix]].Cargue(jj,1,0);
+	    jj=-1;
+	  }
+	}
+	  }
+      //Aceleración o frenado normal
+      else if(gap>=Gaccel[vel]){
+	//Frenado normal
+	if((gap<=Gaccel[vel]+2)&&(LightAhead=1)){
+	  Carros[n[ix]].Cargue(vel-1,1,0);
+	  }
+	  else{
+	    //aceleración
+	    if(del=tup[vel]){Carros[n[ix]].Cargue(vel+1,0,0);}
+	    else {Carros[n[ix]].Cargue(vel,0,del+1);}
+	  }
+      }
+      //Mantener la velocidad
+      else { Carros[n[ix]].Cargue(vel,0,0);}
+      if(ii>ix){ix=ii-1;}
+      else {ix=Lx;}
+    }
+  }
+}
+
+void Carril::Muevase(Carro * Carros){
+  int vel,ix;
+   
+  for(ix=0;ix<Lx;ix++){
+    if(n[ix]!=-1){
+      vel=Carros[n[ix]].GetVel();
+      nnew[(ix+vel)%Lx]=n[ix]; //Actualizar la posición del carro
+      nnew[ix]=-1;
+      }
+  }
+  for(ix=0;ix<Lx;ix++){
+    n[ix]=nnew[ix];
+  }
+}
+
+double Carril::FlujoEspacial(Carro * Carros){
+  double suma=0,vel;
+  
+  for(int i=0;i<Lx;i++){
+    if(n[i]!=-1){
+      vel=Carros[n[i]].GetVel();
+      suma+=(10*vel);
+  }
+  }
+  //Velocidad promedio
+  suma/=CantidadCarros;
+  //Flujo
+  suma*=(CantidadCarros/(2.5*Lx));
+  return suma;
+}
+
+//_____________________Funciones Globales_________________________________________________
+  
+
+int main(void){
+	Carril Calle;
+	int t,tmax=20;
+	double Rho=5.0/(Lx*2.5);
+	double a=Rho*Lx*2.5;
+	int Amount=(int)a;
+	Carro Carros[Amount];
+	
+        //Condiciones inciales aletorias con densidad Rho (#Carros por metro) 
+	Calle.Inicie(Rho,Carros,Amount);
+	//cout<<Calle.Flujo(Carros)<<endl;
+	for(t=0;t<tmax;t++){
+	  Calle.CalculoGap(Carros);
+	  Calle.Interactue(Carros);
+	  Calle.Muevase(Carros);
+	  Calle.FlujoEspacial(Carros);
+	  cout<<" "<<endl;
+	  cout<<t<<" "<<Calle.FlujoEspacial(Carros)<<endl;
+	  }
+	
+}
